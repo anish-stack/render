@@ -40,31 +40,10 @@ const productSchema = new mongoose.Schema({
         type: Number,
         default: 0,
     },
-    reviews: [
-        {
-            user: {
-                type: mongoose.Schema.Types.ObjectId,
-                ref: "User",
-                required: true,
-            },
-            name: {
-                type: String,
-                required: true,
-            },
-            rating: {
-                type: Number,
-                required: true,
-            },
-            comment: {
-                type: String,
-                required: true,
-            },
-        },
-    ],
+  
     sizes: [
       {
         type: String,
-        enum: [  's', 'm', 'l', 'xl', 'xxl'],
       },
     ],
     colors: [

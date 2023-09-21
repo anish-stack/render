@@ -10,14 +10,29 @@ const MiddlewareError = require("./middleware/error");
 const jwt = require("jsonwebtoken"); // Import JWT library
 const mongoose = require("mongoose"); // Import mongoose
 const Order = require("./modals/orderModal"); // Import Order model
-
+const path =require("path")
 dotenv.config({ path: "./config/config.env" });
 
 const SECRET_KEY =
   "OEDKFLJIHYJBAFCQAWSEDRFTGYHUJNIMXCDFVGBHNJDCFVGBHJN";
 
-// Middleware
-app.use(cors());
+
+
+const allowedOrigins = ['http://localhost:3000','https://www.dosomethings.in', 'https://frontenddo.vercel.app', 'https://frontenddo-b4wvilpg2-anish-stack.vercel.app'];
+
+const corsOptions = {
+  origin: function (origin, callback) {
+    if (allowedOrigins.indexOf(origin) !== -1 || !origin) {
+      callback(null, true);
+    } else {
+      callback(new Error('Not allowed by CORS'));
+    }
+  },
+};
+
+app.use(cors(corsOptions));
+
+  
 app.use(cookieParser());
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
@@ -51,6 +66,7 @@ const {
   getAllProducts,
   updateProduct,
   deleteProduct,
+  FilterProductsByKeywords,
   gettSingleProducts,
 } = require("./controller/productControll");
 
@@ -76,7 +92,7 @@ const {
 const stripeController = require("./controller/paymentController");
 
 const {
-  isAuthenticatedUser,
+  
   isAdmin,
   authenticateUser,
 } = require("./middleware/auth");
@@ -85,39 +101,38 @@ const {
 app.post("/register", registerUser);
 app.get("/logout", authenticateUser, logout);
 app.get("/user/id/:id", getUserDetailsById);
-app.get("/user/email/:email", isAuthenticatedUser, getUserDetailsByEmail);
-app.post("/products/:productId/reviews", isAuthenticatedUser, addReview);
+app.get("/user/email/:email",  getUserDetailsByEmail);
+app.post("/products/:productId/reviews",  addReview);
 app.post("/user/change/password", changePassword);
 app.get("/getToken", sendToken);
 app.post("/sendOtp", sendOtpForLogin);
 app.post("/loginUserTest", loginUsertest);
-app.post("/products/new", isAuthenticatedUser, createProduct);
+app.post("/products/new",  createProduct);
 
 // Admin routes (accessible only by admins)
 app.patch("/user/email/:email", updateUserDetails);
-app.patch("/user/:userId/role", isAuthenticatedUser, isAdmin, updateUserRole);
+app.patch("/user/:userId/role",  isAdmin, updateUserRole);
 app.get("/users", getAllUsers);
 app.delete("/users/delete/:userId", deleteUser);
 
 // Routes for products
 app.get("/products", getAllProducts); // Retrieve all products
-app.post("/products/new", isAuthenticatedUser, createProduct); // Create a new product
-app.put("/products/:id", isAuthenticatedUser, updateProduct); // Update a product by ID
-app.delete("/products/:id", isAuthenticatedUser, deleteProduct); // Delete a product by ID
+app.post("/products/new",  createProduct); // Create a new product
+app.put("/products/:id", updateProduct); // Update a product by ID
+app.delete("/products/:id",  deleteProduct); // Delete a product by ID
 app.get("/products/:id", gettSingleProducts); // Retrieve a single product by ID
-
-// Routes for orders
+app.get('/products/keywords/:keywords', FilterProductsByKeywords);
 app.post("/order/new", newOrder);
-app.get("/order/info/:id", isAuthenticatedUser, singleorder);
-app.get("/me", isAuthenticatedUser, myOrder);
+app.get("/order/info/:id",  singleorder);
+app.get("/me",  myOrder);
 app.get("/meOrder/:email", myOrderEmail);
 app.get("/allorder/:PhoneNo", getOrdersByPhoneNumber);
 
 // Admin routes for orders
 app.get("/admin/orders", allOrdersAdmin);
-app.patch("/changeStatus/:id", isAuthenticatedUser, isAdmin, changeStatus);
-app.delete("/deleteorder/:id", isAuthenticatedUser, isAdmin, deleteOrder);
-app.delete("/user/cancel/:id", isAuthenticatedUser, deleteOrder);
+app.patch("/changeStatus/:id",   changeStatus);
+app.delete("/deleteorder/:id",   deleteOrder);
+app.delete("/user/cancel/:id",  deleteOrder);
 app.get("/admin/delete", deleteProcessingOrders);
 app.delete("/delete-orders-with-null-items", deleteOrdersWithNullItems);
 app.delete("/delete-orders-with-total-price-zero", deleteOrdersWithZeroTotalPrice);
@@ -172,19 +187,19 @@ app.post("/api/v1/verifyToken", (req, res) => {
 });
 
 // Download order invoice route
-app.get("/api/v1/orders/:orderId/download", async (req, res) => {
-  try {
-    const order = await Order.findById(req.params.orderId);
+// app.get("/api/v1/orders/:orderId/download", async (req, res) => {
+//   try {
+//     const order = await Order.findById(req.params.orderId);
 
-    if (!order) {
-      return res.status(404).json({ message: "Order not found" });
-    }
+//     if (!order) {
+//       return res.status(404).json({ message: "Order not found" });
+//     }
 
-    res.download(order.invoicePath);
-  } catch (error) {
-    res.status(500).json({ message: "Internal server error" });
-  }
-});
+//     res.download(order.invoicePath);
+//   } catch (error) {
+//     res.status(500).json({ message: "Internal server error" });
+//   }
+// });
 
 // Reset password routes
 app.get("/reset-password", async (req, res) => {
@@ -230,6 +245,12 @@ app.post("/reset-password", async (req, res) => {
     console.error("Error:", error);
     res.status(500).send("An error occurred.");
   }
+});
+
+//sucesss Routes
+app.get("/success", (req, res) => {
+  const filePath = path.join(__dirname, "/temeplete/passwordsucess.html"); // Change "success.html" to your actual file name
+  res.sendFile(filePath);
 });
 
 // Root route

@@ -96,7 +96,7 @@ exports.registerUser = catchAsyncErrors(async (req, res) => {
 
     // Construct the activation link
     const activationLink = `${
-      process.env.BASE_URL
+      "https://dosomethingbackend.vercel.app"
     }/activate?token=${encodeURIComponent(activationToken)}`;
 
     // Log the activation link to the console
@@ -195,6 +195,7 @@ exports.loginUsertest = catchAsyncErrors(async (req, res) => {
 
     if (!isPasswordValid) {
       console.log("Password mismatch");
+      console.log(password)
       return res.status(401).json({ error: "Invalid credentials" });
     }
 
@@ -472,7 +473,7 @@ exports.changePassword = catchAsyncErrors(async (req, res) => {
 
     // Construct the password reset link
     const resetPasswordLink = `${
-      process.env.BASE_URL
+      "https://dosomethingbackend.vercel.app"
     }/reset-password?token=${encodeURIComponent(resetPasswordToken)}`;
     console.log(resetPasswordLink)
     // Send password reset email

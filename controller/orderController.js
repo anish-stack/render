@@ -45,56 +45,6 @@ exports.newOrder = catchAsyncErrors(async (req, res, next) => {
     paidAt: Date.now(),
   });
 
-  const invoiceName = `invoice_${order._id}.pdf`;
-  const invoicePath = path.join(__dirname, '..', 'invoices', invoiceName);
-
-  // Ensure directory exists
-  const invoiceDir = path.dirname(invoicePath);
-  if (!fs.existsSync(invoiceDir)) {
-    fs.mkdirSync(invoiceDir, { recursive: true });
-  }
-
-  const doc = new PDFDocument();
-  doc.pipe(fs.createWriteStream(invoicePath));
-
-  // Add content to the PDF
-  doc.font('Helvetica-Bold').fontSize(18).text('Invoice', { align: 'center' });
-
-  // Add order details
-  doc.font('Helvetica').fontSize(20).text(`Invoice Number: ${order.invoiceNumber}`);
-
-  doc.font('Helvetica').fontSize(12).text(`Order ID: ${order._id}`);
-  doc.text(`Order Date: ${order.paidAt.toDateString()}`);
-  doc.text(`Shipping Address: ${shippingInfo.address}, ${shippingInfo.city}, ${shippingInfo.country}`);
-  doc.moveDown();
-
-  // Add order items
-  doc.font('Helvetica-Bold').fontSize(14).text('Order Items:');
-  orderItems.forEach((item) => {
-    doc.font('Helvetica').fontSize(12).text(`${item.name} - Quantity: ${item.quantity}, Price: $${item.price}`);
-  });
-  doc.moveDown();
-  //add user info here
-  doc.font('Helvetica-Bold').fontSize(14).text('User Details:');
-  doc.font('Helvetica').fontSize(12).text(`user ID: ${userInfo.userId}`);
-  doc.text(`email: ${userInfo.UserEmail}`);
-  // Add payment details
-  doc.font('Helvetica-Bold').fontSize(14).text('Payment Details:');
-  doc.font('Helvetica').fontSize(12).text(`Payment ID: ${paymentInfo.id}`);
-  doc.text(`Payment Status: ${paymentInfo.status}`);
-  doc.moveDown();
-
-  // Add pricing details
-  doc.font('Helvetica-Bold').fontSize(14).text('Pricing Details:');
-  doc.font('Helvetica').fontSize(12).text(`Items Price: Rs${itemsPrice}`);
-  doc.text(`Tax Price: Rs${taxPrice}`);
-  doc.text(`Shipping Price: Rs${shippingPrice}`);
-  doc.text(`Total Price: Rs${totalPrice}`);
-
-  doc.end();
-
-  // Update order with invoicePath
-  order.invoicePath = invoicePath;
   await order.save();
 
   console.log(order)
@@ -102,7 +52,6 @@ exports.newOrder = catchAsyncErrors(async (req, res, next) => {
   res.status(201).json({
     success: true,
     order,
-    invoiceLink: invoicePath,
   });
 });
 // get singleorder Details by order id

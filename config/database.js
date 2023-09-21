@@ -3,7 +3,7 @@ const mongoose = require("mongoose");
 const dotenv = require("dotenv");
 dotenv.config({ path: "./config.env" });
 
-const uri = "mongodb+srv://ownerdgmtech:XAfChIOGOFMSOoae@cluster0.noaevot.mongodb.net/?retryWrites=true&w=majority"; // Replace with your MongoDB URI from config
+const uri = "mongodb+srv://ownerdgmtech:jCtH6g3WW06HZ2Om@cluster0.ozjuanl.mongodb.net/?retryWrites=true&w=majority"; // Replace with your MongoDB URI from config
 
 const connectDB = async () => {
   try {

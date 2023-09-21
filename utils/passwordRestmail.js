@@ -8,8 +8,8 @@ const sendPasswordToken= async (optionsToken,resetPasswordLink) => {
       host: "smtp.gmail.com",
       port: 587,
       auth: {
-        user: process.env.SMPT_EMAIL,
-        pass: process.env.SMPT_PASSWORD,
+        user:"dosomething616@gmail.com",
+        pass: "luuelrzjzmwqgium",
       },
     });
 
@@ -17,7 +17,7 @@ const sendPasswordToken= async (optionsToken,resetPasswordLink) => {
     const htmlContent = fs.readFileSync(path.join(__dirname, "../temeplete/password.html"), 'utf-8');
     const modifiedHtml = htmlContent.replace('{{resetLink}}', resetPasswordLink);
     const mailOptions = {
-      from: process.env.SMPT_EMAIL,
+      from:"dosomething616@gmail.com",
       to: optionsToken.email,
       subject: optionsToken.subject,
       html: modifiedHtml,

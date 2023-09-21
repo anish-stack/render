@@ -26,21 +26,21 @@ const catchAsyncErrors = (fn) => (req, res, next) => {
   
   
 
-  exports.isAuthenticatedUser = catchAsyncErrors(async (req, res, next) => {
-    const { token } = req.cookies;
-    console.log(token)
+  exports.isAuthenticatedUser = async (req, res, next) => {
+    const token = req.headers.authorization;
+  
     if (!token) {
-      return next(new ErrorHander("Please Login to access this resource", 401));
+      return res.status(401).json({ error: 'Please login to access this resource' });
     }
   
     try {
-      const decodedData = jwt.verify(token, process.env.JWT_SECRET_TOKEN);
-      req.user = await User.findById(decodedData.id);
+      const decodedData = jwt.verify(token, 'your-secret-key'); // Replace with your actual secret key
+      req.user = await User.findById(decodedData.id); // Assuming you have a User model
       next();
     } catch (error) {
-      return next(new ErrorHander("Please Login to access this resource", 401));
+      return res.status(401).json({ error: 'Please login to access this resource' });
     }
-  });
+  };
   
 exports.authorizeRoles = (...roles) => {
   return (req, res, next) => {
@@ -71,7 +71,7 @@ exports.authenticateUser = (req, res, next) => {
 
   if (token) {
     try {
-      const decoded = jwt.verify(token, process.env.JWT_SECRET_TOKEN);
+      const decoded = jwt.verify(token, "OEDKFLJIHYJBAFCQAWSEDRFTGYHUJNIMXCDFVGBHNJDCFVGBHJN");
       req.user = decoded; // Attach user information to req.user
     } catch (error) {
       // Handle invalid token or token expiration

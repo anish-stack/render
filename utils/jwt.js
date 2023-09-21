@@ -1,8 +1,8 @@
 const sendToken = (user, statusCode, res) => {
   const token = user.getJWTToken();
 
-  // Convert process.env.JWT_Expires to days and create a Date object
-  const expirationDays = parseInt(process.env.JWT_Expires);
+  // Convert "5d" to days and create a Date object
+  const expirationDays = parseInt("5d");
   const expirationTime = new Date(Date.now() + expirationDays * 24 * 60 * 60 * 1000);
 
   const options = {

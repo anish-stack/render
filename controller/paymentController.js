@@ -1,5 +1,7 @@
 const stripe = require('stripe')("sk_test_51NdrqMSIJQipzpwwdH0tF6G0UdCe1rR1NyiSfUybwSkhX0tOJbLnxtCsUM0h6MkHRCmCaZsmcVawqqZf5wPpLcFs007mpj45zw");
 // const ErrorHandler = require('../middleware/error');
+const axios = require('axios');
+
 const Payment = require("../modals/payement")
 // =====Catch Async error
 const catchAsyncErrors = (fn) => (req, res, next) => {
@@ -33,5 +35,5 @@ exports.processPayment = catchAsyncErrors(async (req, res, next) => {
 });
 
 exports.sendStripeApiKey = catchAsyncErrors(async (req, res, next) => {
-  res.status(200).json({ stripeApiKey: process.env.Stripe_SECRECT_KEY });
+  res.status(200).json({ stripeApiKey: "sk_test_51NdrqMSIJQipzpwwdH0tF6G0UdCe1rR1NyiSfUybwSkhX0tOJbLnxtCsUM0h6MkHRCmCaZsmcVawqqZf5wPpLcFs007mpj45zw" });
 });

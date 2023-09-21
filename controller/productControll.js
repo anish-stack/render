@@ -119,3 +119,47 @@ exports.gettSingleProducts = catchAsyncErrors(async (req, res, next) => {
     product,
   });
 });
+exports.FilterProductsByKeywords = catchAsyncErrors(async (req, res) => {
+  try {
+    const { keywords } = req.params;
+
+    // Check if the 'keywords' parameter is missing or empty
+    if (!keywords || keywords.trim() === '') {
+      return res.status(400).json({
+        success: false,
+        message: "Keywords are required.",
+      });
+    }
+
+    const keywordArray = keywords.split(" ");
+
+    // Construct a regular expression pattern to match at least three keywords
+    const regexPattern = keywordArray.map(keyword => `(?=.*${keyword})`).join('');
+
+    // Create a regex object
+    const regex = new RegExp(regexPattern, 'i'); // 'i' for case-insensitive matching
+
+    // Query for products with names matching the regex pattern
+    const productsMatchingKeywords = await products.find({
+      name: regex
+    }).exec();
+
+    if (productsMatchingKeywords.length === 0) {
+      return res.status(404).json({
+        success: false,
+        message: "No products found with the specified keywords.",
+      });
+    }
+
+    res.status(200).json({
+      success: true,
+      products: productsMatchingKeywords,
+    });
+  } catch (error) {
+    console.error("Error filtering products by keywords:", error);
+    res.status(500).json({
+      success: false,
+      message: "Failed to filter products by keywords.",
+    });
+  }
+});

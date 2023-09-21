@@ -8,8 +8,8 @@ const sendEmail = async (options,activationLink) => {
       host: "smtp.gmail.com",
       port: 587,
       auth: {
-        user: process.env.SMPT_EMAIL,
-        pass: process.env.SMPT_PASSWORD,
+        user:"dosomething616@gmail.com",
+        pass: "luuelrzjzmwqgium",
       },
     });
 
@@ -17,7 +17,7 @@ const sendEmail = async (options,activationLink) => {
     const htmlContent = fs.readFileSync(path.join(__dirname, "../temeplete/mailConfirm.html"), 'utf-8');
     const modifiedHtml = htmlContent.replace('{{activationLink}}', activationLink);
     const mailOptions = {
-      from: process.env.SMPT_EMAIL,
+      from:"dosomething616@gmail.com",
       to: options.email,
       subject: options.subject,
       html: modifiedHtml,
