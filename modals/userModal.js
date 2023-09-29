@@ -1,9 +1,8 @@
-const mongoose = require("mongoose");
-const bcrypt = require("bcrypt");
-const jwt = require("jsonwebtoken");
-
+const mongoose = require('mongoose');
+const bcrypt = require('bcrypt');
+const jwt = require('jsonwebtoken')
 const userSchema = new mongoose.Schema({
-  name: {
+  username: {
     type: String,
     required: true,
   },
@@ -11,63 +10,72 @@ const userSchema = new mongoose.Schema({
     type: String,
     required: true,
     unique: true,
-    lowercase: true,
+  },
+  contactNumber: {
+    type: String,
+    required: true,
   },
   password: {
     type: String,
     required: true,
   },
-  role: {
-    type: String,
-    enum: ["user", "admin"],
-    default: "user",
-  },
-  contactNumber: {
+  confirmPassword: {
     type: String,
   },
-  avatar: {
-    type: String, // You can store the avatar image URL here
+  isActivated:{
+    type:Boolean
   },
-  otp: {
-    type: Number,
+  token: {
+    type: String,
   },
-  otpExpires: Date,
-  resetPasswordToken: String,
-  resetPasswordTokenExpires: Date,
-  activationToken: String,
-  activationTokenExpires: Date,
-  isActivated: Boolean,
-  dateOfJoin: {
+  role:{
+type:String,
+default:'user',
+  },
+
+  activationtoken:{
+    type: String
+  },
+  activationtokenExpires:{
+    type:Date
+  },
+  resetPasswordOTP: {
+    type: Number, // Assuming OTP is a 4-digit number
+  },
+  resetPasswordOTPExpires: {
     type: Date,
-    default: Date.now,
-  },
+  }
 });
 
-// Hash the password before saving
-userSchema.pre("save", async function (next) {
-  if (!this.isModified("password")) return next();
+// Define a pre-save hook to hash the password before saving it to the database
+userSchema.pre('save', async function (next) {
+  const user = this;
+  if (!user.isModified('password')) return next();
 
   try {
     const salt = await bcrypt.genSalt(10);
-    this.password = await bcrypt.hash(this.password, salt);
+    const hashedPassword = await bcrypt.hash(user.password, salt);
+    user.password = hashedPassword;
+    user.confirmPassword = undefined; // Clear confirmPassword after hashing
     next();
   } catch (error) {
     return next(error);
   }
 });
 
-// Add the method to generate a JWT token
-userSchema.methods.getJWTToken = function () {
-  return jwt.sign({ id: this._id }, "OEDKFLJIHYJBAFCQAWSEDRFTGYHUJNIMXCDFVGBHNJDCFVGBHJN", {
-    expiresIn:"5d",
-  });
-};
+//// Add the method to compare passwords
 
-// Add the method to compare passwords
-userSchema.methods.comparePassword = async function (enteredPassword) {
+userSchema.methods.comparePassword = async function(enteredPassword) {
   return await bcrypt.compare(enteredPassword, this.password);
 };
 
-const User = mongoose.model("User", userSchema);
+userSchema.methods.getJwtToken = function () {
+  const token = jwt.sign({ id: this._id, email: this.email }, process.env.JWT_SECRET, {
+    expiresIn: '4d',
+  });
+  return token;
+};
+
+const User = mongoose.model('User', userSchema);
 
 module.exports = User;

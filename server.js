@@ -18,7 +18,7 @@ const SECRET_KEY =
 
 
 
-const allowedOrigins = ['http://localhost:3000','https://www.dosomethings.in', 'https://frontenddo.vercel.app', 'https://frontenddo-b4wvilpg2-anish-stack.vercel.app'];
+const allowedOrigins = ['http://localhost:3000','http://localhost:3001','https://www.dosomethings.in', 'https://frontenddo.vercel.app','https://admin-lovat-nu.vercel.app', 'https://frontenddo-b4wvilpg2-anish-stack.vercel.app'];
 
 const corsOptions = {
   origin: function (origin, callback) {
@@ -58,6 +58,7 @@ const {
   sendToken,
   sendOtpForLogin,
   loginUsertest,
+  verifyOTPAndChangePassword,
 } = require("./controller/userController");
 
 // Imports for products controller
@@ -68,6 +69,7 @@ const {
   deleteProduct,
   FilterProductsByKeywords,
   gettSingleProducts,
+  searchProducts,
 } = require("./controller/productControll");
 
 // Imports for order controllers
@@ -103,7 +105,8 @@ app.get("/logout", authenticateUser, logout);
 app.get("/user/id/:id", getUserDetailsById);
 app.get("/user/email/:email",  getUserDetailsByEmail);
 app.post("/products/:productId/reviews",  addReview);
-app.post("/user/change/password", changePassword);
+app.post('/change-password',changePassword)
+app.post('/verifyotp',verifyOTPAndChangePassword)
 app.get("/getToken", sendToken);
 app.post("/sendOtp", sendOtpForLogin);
 app.post("/loginUserTest", loginUsertest);
@@ -127,7 +130,7 @@ app.get("/order/info/:id",  singleorder);
 app.get("/me",  myOrder);
 app.get("/meOrder/:email", myOrderEmail);
 app.get("/allorder/:PhoneNo", getOrdersByPhoneNumber);
-
+app.get('/products/search/:keyword', searchProducts);
 // Admin routes for orders
 app.get("/admin/orders", allOrdersAdmin);
 app.patch("/changeStatus/:id",   changeStatus);
@@ -144,31 +147,37 @@ app.post("/payment/process", stripeController.processPayment);
 app.get("/stripeapikey", stripeController.sendStripeApiKey);
 
 // Activation route
-app.get("/activate", async (req, res) => {
+app.get('/activate', async (req, res) => {
   try {
-    const activationToken = decodeURIComponent(req.query.token);
-    const userActivated = await userA.findOne({ activationToken });
+      const { token } = req.query;
+    console.log(req.query)
+      // Find the user with the provided token
+      const user = await userA.findOne({ activationtoken: token });
+      console.log(user)
 
-    if (!userActivated) {
-      return res.status(400).send("Invalid activation token.");
-    }
+      if (!user) {
+          // Handle the case where the token does not match any user
+          throw new ErrorHandler('Invalid or expired activation token', 400);
+      }
 
-    if (userActivated.activationTokenExpires < Date.now()) {
-      return res.status(400).send("Activation token has expired.");
-    }
+      // Check if the token has expired
+      if (user.activationtokenExpires <= Date.now()) {
+          // Handle the case where the token has expired
+          throw new ErrorHandler('Activation token has expired', 400);
+      }
 
-    userActivated.isActivated = true;
-    userActivated.activationToken = undefined;
-    await userActivated.save();
+      // Activate the user's account
+      user.isActivated = true;
+      await user.save();
 
-    const filePath = __dirname + "/temeplete/activated.html";
-    res.sendFile(filePath);
-    console.log(filePath);
+      // Redirect the user to a success page or display a success message
+      res.status(200).json({ message: 'Account activated successfully' });
   } catch (error) {
-    console.error("Error:", error);
-    res.status(500).send("An error occurred.");
+      // Handle errors
+      console.error('Error:', error);
+      res.status(error.statusCode || 500).json({ error: error.message });
   }
-});
+})
 
 // Route to verify a token
 app.post("/api/v1/verifyToken", (req, res) => {
@@ -201,51 +210,6 @@ app.post("/api/v1/verifyToken", (req, res) => {
 //   }
 // });
 
-// Reset password routes
-app.get("/reset-password", async (req, res) => {
-  try {
-    const resetPasswordToken = decodeURIComponent(req.query.token);
-    const user = await userA.findOne({ resetPasswordToken });
-
-    if (!user) {
-      return res.status(400).send("Invalid reset password token.");
-    }
-
-    const resetPasswordPagePath = __dirname + "/temeplete/passwordreset.html";
-    res.sendFile(resetPasswordPagePath);
-  } catch (error) {
-    console.error("Error:", error);
-    res.status(500).send("An error occurred.");
-  }
-});
-
-app.post("/reset-password", async (req, res) => {
-  try {
-    const resetPasswordToken = decodeURIComponent(req.query.token);
-    const user = await userA.findOne({ resetPasswordToken });
-
-    if (!user) {
-      return res.status(400).send("Invalid reset password token.");
-    }
-
-    if (user.resetPasswordTokenExpires < new Date()) {
-      return res.status(400).send("Reset password token has expired.");
-    }
-
-    const newPassword = req.body.newPassword;
-    const hashedPassword = await bcrypt.hash(newPassword, 10);
-    user.password = hashedPassword;
-    user.resetPasswordToken = undefined;
-    user.resetPasswordTokenExpires = undefined;
-    await user.save();
-
-    const successPagePath = __dirname + "/temeplete/passwordsucess.html";
-    res.sendFile(successPagePath);
-  } catch (error) {
-    console.error("Error:", error);
-    res.status(500).send("An error occurred.");
-  }
-});
 
 //sucesss Routes
 app.get("/success", (req, res) => {

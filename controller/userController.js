@@ -46,82 +46,83 @@ exports.sendToken = catchAsyncErrors(async (req, res) => {
   }
 });
 
+const deleteUnactivatedUsers = async () => {
+  try {
+    const twentyMinutesAgo = new Date(Date.now() - 20 * 60 * 1000);
+
+    const unactivatedUsers = await User.find({
+      isActivated: false,
+      createdAt: { $lt: twentyMinutesAgo },
+    });
+
+    for (const user of unactivatedUsers) {
+      await User.remove();
+      console.log(`Deleted unactivated user with email: ${user.email}`);
+    }
+  } catch (error) {
+    console.error("Error deleting unactivated users:", error);
+  }
+};
 // Register user
 
 exports.registerUser = catchAsyncErrors(async (req, res) => {
+  const { name, email, contact, password, confirmpassword, role } = req.body;
+
+  console.log(req.body);
+
   try {
-    const { name, email, password, role, contactNumber } = req.body;
+    // Check if a user with the same email already exists
     const existingUser = await User.findOne({ email });
 
     if (existingUser) {
-      return res
-        .status(400)
-        .json({ error: "User with this email already exists" });
+      throw new ErrorHandler("User already exists with this Email Id", 400);
+    } else if (!name || !email || !contact || !password || !confirmpassword) {
+      throw new ErrorHandler("Please Fill All Fields", 422);
     }
 
-    // Generate a unique activation token
-    const activationToken = crypto.randomBytes(32).toString("hex");
+    if (password !== confirmpassword) {
+      throw new ErrorHandler("Confirm Password Not Match", 422);
+    }
 
-    // Set the expiration time to 20 minutes from now
-    const expirationTime = new Date(Date.now() + 20 * 60 * 1000);
-    const avatar = await generateAvatarUrl(name);
-    // Create a new user with the activation token and expiration time
+    const activationtoken = crypto.randomBytes(20).toString("hex");
+    const activationtokenExpires = new Date(Date.now() + 20 * 60 * 1000);
+
     const newUser = new User({
-      name,
+      username: name, // Change 'username' to 'name'
       email,
+      contactNumber: contact, // Change 'contactNumber' to 'contact'
       password,
+      confirmPassword: confirmpassword, // Change 'confirmPassword' to 'confirmpassword'
       role,
-      avatar,
-      contactNumber,
-      activationToken,
-      isActivated: false, // Initially set to false
-      activationTokenExpires: expirationTime, // Store the expiration time
-      dateOfJoin: Date.now(),
+      isActivated: false,
+      activationtoken,
+      activationtokenExpires,
     });
 
-    // Set a timer to delete the user after 20 minutes
-    exports.deletionTimeout = setTimeout(async () => {
-      try {
-        const userToDelete = await User.findOne({ _id: newUser._id });
-        if (userToDelete && !userToDelete.isActivated) {
-          await User.deleteOne({ _id: newUser._id }); // Delete the user document
-          console.log(
-            `Deleted user ${userToDelete.email} due to expired activation token.`
-          );
-        }
-      } catch (error) {
-        console.error("Error deleting user:", error);
-      }
-    }, 900000); // 1 minute in milliseconds
+    const activationLink = `https://dosomethingbackend.vercel.app/activate?token=${encodeURIComponent(activationtoken)}`;
 
-    // Construct the activation link
-    const activationLink = `${
-      "https://dosomethingbackend.vercel.app"
-    }/activate?token=${encodeURIComponent(activationToken)}`;
+    await sendEmail(
+      {
+        email: newUser.email,
+        subject: "Activate Your Account",
+        message: `Click the following link to activate your account: ${activationLink}`,
+      },
+      activationLink
+    );
 
-    // Log the activation link to the console
-    console.log("Activation Link:", activationLink);
-
-    // Send registration activation email with the activation link
-    const emailOptions = {
-      email: newUser.email,
-      subject: "Activate Your Account",
-      message: `Click the following link to activate your account: ${activationLink}`,
-    };
-    await sendEmail(emailOptions, activationLink); // Pass the activation link as an argument
-
-    // Assuming you have a sendEmail function to send emails
+    console.log(activationLink);
     await newUser.save();
     res.status(201).json({
-      message:
-        "User registered successfully. An activation email has been sent.",
+      message: "User registered successfully. An activation email has been sent.",
       newUser,
     });
   } catch (error) {
     console.error("Error:", error);
-    res.status(500).json({ error: "An error occurred" });
+    res.status(error.statusCode || 500).json({ error: error.message });
   }
 });
+
+setInterval(deleteUnactivatedUsers, 20 * 60 * 1000);
 
 // Login User
 
@@ -153,66 +154,62 @@ exports.sendOtpForLogin = async (req, res, next) => {
 };
 
 
-// exports.loginUser = catchAsyncErrors(async (req, res, next) => {
-//   try {
-//     const { email, otp } = req.body;
-
-//     // Checking if user has given both email and OTP
-//     if (!email || !otp) {
-//       return sendErrorResponse(res, new ErrorHandler("Please Enter Email & OTP", 400));
-//     }
-
-//     const user = await User.findOne({ email });
-
-//     if (!user) {
-//       return sendErrorResponse(res, new ErrorHandler("Invalid email or OTP", 401));
-//     }
-
-//     await user.save();
-
-//     // Generate and send JWT token for login
-//     sendToken(user, 200, res);
-//   } catch (error) {
-//     console.error("Error during login:", error);
-//     res.status(500).json({ error: "An error occurred" });
-//   }
-// });
 exports.loginUsertest = catchAsyncErrors(async (req, res) => {
   try {
     const { email, password } = req.body;
 
-    // Find the user with the given email
+    console.log(req.body)
+
+    if (!email || !password) {
+      throw new ErrorHandler("Please Enter Email And Password", 400);
+    }
+
     const user = await User.findOne({ email });
 
-    // If no user is found, return an error
     if (!user) {
-      console.log("User not found");
-      return res.status(401).json({ error: "Invalid credentials" });
+      throw new ErrorHandler("User With this Email Not Existed", 404);
     }
 
-    // Check if the provided password matches the user's password
-    const isPasswordValid = await user.comparePassword(password);
-
-    if (!isPasswordValid) {
-      console.log("Password mismatch");
-      console.log(password)
-      return res.status(401).json({ error: "Invalid credentials" });
-    }
-
-    // Check if the user's account is activated
     if (!user.isActivated) {
-      console.log("Account not activated");
-      return res.status(403).json({ error: "Account not activated" });
+      throw new ErrorHandler("User Not Activated", 403);
     }
 
-    // At this point, the user is authenticated
-    // You can generate a JWT token and send it as a response
-    sendToken(user, 200, res);
-    console.log("Login successful");
+    // Use bcrypt to compare passwords
+    const passwordMatch = await bcrypt.compare(password, user.password);
 
+    if (!passwordMatch) {
+      throw new ErrorHandler("Password Mismatch", 401);
+    }
+
+    const payload = {
+      email: user.email,
+      id: user._id, // Fix this typo, it should be _id, not _id
+      role: user.role,
+    };
+
+    const token = jwt.sign(payload,"OEDKFLJIHYJBAFCQAWSEDRFTGYHUJNIMXCDFVGBHNJDCFVGBHJN", {
+      expiresIn: "7h",
+    });
+
+    // Remove the password from the user object before sending it in the response
+    user.password = undefined;
+
+    const options = {
+      expires: new Date(Date.now() + 3 * 24 * 60 * 60 * 1000),
+      httpOnly: true,
+    };
+
+    res.cookie("token", token, options).status(200).json({
+      success: true,
+      token,
+      user,
+      message: "Logged in successfully",
+    });
   } catch (error) {
-    console.error("Error:", error);
-    res.status(500).json({ error: "An error occurred" });
+    return res.status(error.statusCode || 500).json({
+      success: false,
+      message: error.message || "Internal Server Error",
+    });
   }
 });
 
@@ -449,44 +446,83 @@ exports.AlluserDel = catchAsyncErrors(async (req, res) => {
 exports.changePassword = catchAsyncErrors(async (req, res) => {
   try {
     const { email } = req.body;
-
-    // Find the user by email
     const user = await User.findOne({ email });
 
-    // If user not found, return an error
+    // Check if the user exists
     if (!user) {
-      return res.status(400).json({ error: "User not found" });
+      return res.status(404).json({
+        success: false,
+        message: "User Not Existed",
+      });
     }
 
-    // Generate a unique reset password token
-    const resetPasswordToken = crypto.randomBytes(32).toString("hex");
+    // Generate a random four-digit OTP
+    const otp = Math.floor(1000 + Math.random() * 9000);
 
-    // Set the expiration time for the reset password token
-    const resetPasswordTokenExpires = new Date(Date.now() + 20 * 60 * 1000);
+    // Save the OTP and its expiration time in the user object
+    user.resetPasswordOTP = otp;
+    user.resetPasswordOTPExpires = new Date(Date.now() + 20 * 60 * 1000);
 
-    // Update the user's reset password token details
-    user.resetPasswordToken = resetPasswordToken;
-    user.resetPasswordTokenExpires = resetPasswordTokenExpires;
+    // Send the OTP to the user's email
+    const payload = {
+      email: user.email,
+      subject: "Reset Password OTP",
+      message: `Your OTP to reset your password is: ${otp}`,
+    };
 
-    // Save the user document with the updated token details
+    // Send the OTP via email
+    // console.log(payload)
+    await sendEmail(payload);
     await user.save();
 
-    // Construct the password reset link
-    const resetPasswordLink = `${
-      "https://dosomethingbackend.vercel.app"
-    }/reset-password?token=${encodeURIComponent(resetPasswordToken)}`;
-    console.log(resetPasswordLink)
-    // Send password reset email
-    const restToken = {
-      email: user.email,
-      subject: "Reset Your Password",
-      message: `Click the following link to reset your password: ${resetPasswordLink}`,
-    };
-    await sendTokenMail(restToken, resetPasswordLink);
-
-    res.status(200).json({ message: "Password reset link sent to your email" });
+    res.status(200).json({ message: "OTP sent to your email" });
   } catch (error) {
     console.error("Error:", error);
     res.status(500).json({ error: "An error occurred" });
   }
 });
+exports.verifyOTPAndChangePassword = catchAsyncErrors(async (req, res) => {
+  try {
+    const { email, otp, newPassword } = req.body;
+
+    // Find the user by email
+    const user = await User.findOne({ email });
+
+    // Check if the user exists
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: "User Not Existed",
+      });
+    }
+
+    // Check if the OTP matches and it's not expired
+    if (
+      user.resetPasswordOTP !== otp ||
+      new Date() > user.resetPasswordOTPExpires
+    ) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid OTP or OTP has expired",
+      });
+    }
+
+    // Reset the OTP and set the new password
+    user.resetPasswordOTP = undefined;
+    user.resetPasswordOTPExpires = undefined;
+    user.password = newPassword;
+
+    // Save the updated user object
+    await user.save();
+
+    res.status(200).json({ message: "Password reset successfully" });
+  } catch (error) {
+    console.error("Error:", error);
+    res.status(500).json({ error: "An error occurred" });
+  }
+});
+// Helper function to validate email format
+function isValidEmail(email) {
+  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  return emailRegex.test(email);
+}

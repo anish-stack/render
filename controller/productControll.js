@@ -133,15 +133,19 @@ exports.FilterProductsByKeywords = catchAsyncErrors(async (req, res) => {
 
     const keywordArray = keywords.split(" ");
 
-    // Construct a regular expression pattern to match at least three keywords
+    // Construct a regular expression pattern to match the keywords in both category and name
     const regexPattern = keywordArray.map(keyword => `(?=.*${keyword})`).join('');
 
     // Create a regex object
     const regex = new RegExp(regexPattern, 'i'); // 'i' for case-insensitive matching
 
-    // Query for products with names matching the regex pattern
+    // Query for products with names, categories, or keywords matching the regex pattern
     const productsMatchingKeywords = await products.find({
-      name: regex
+      $or: [
+        { name: regex },
+        { category: regex },
+        { keywords: { $in: keywordArray } } // Match products with any of the provided keywords
+      ]
     }).exec();
 
     if (productsMatchingKeywords.length === 0) {
@@ -163,3 +167,50 @@ exports.FilterProductsByKeywords = catchAsyncErrors(async (req, res) => {
     });
   }
 });
+
+
+
+
+exports.searchProducts = async (req, res) => {
+  try {
+    const { keyword } = req.params;
+
+    // Check if the 'keyword' parameter is missing or empty
+    if (!keyword || keyword.trim() === '') {
+      return res.status(400).json({
+        success: false,
+        message: "Keyword is required.",
+      });
+    }
+
+    // Create a regex pattern for the keyword
+    const regexPattern = new RegExp(keyword, 'i'); // 'i' for case-insensitive matching
+
+    // Query for products with names, categories, or keywords matching the regex pattern
+    const productsMatchingKeyword = await products.find({
+      $or: [
+        { name: regexPattern },
+        { category: regexPattern },
+        { keywords: { $in: [regexPattern] } }, // Match keywords exactly
+      ]
+    }).exec();
+
+    if (productsMatchingKeyword.length === 0) {
+      return res.status(404).json({
+        success: false,
+        message: "No products found with the specified keyword.",
+      });
+    }
+
+    res.status(200).json({
+      success: true,
+      products: productsMatchingKeyword,
+    });
+  } catch (error) {
+    console.error("Error searching products:", error);
+    res.status(500).json({
+      success: false,
+      message: "Failed to search products.",
+    });
+  }
+};
